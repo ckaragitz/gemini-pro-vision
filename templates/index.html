@@ -1,0 +1,87 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Camera and AI Response</title>
+    <style>
+        body {
+            background-color: white;
+            text-align: center;
+            font-family: Arial, sans-serif; /* Example font */
+        }
+        #videoFeed {
+            margin-top: 20px;
+            border: 5px solid #007BFF; /* Blue border for the video */
+        }
+        #buttonContainer {
+            margin-top: 20px;
+        }
+        #aiResponse {
+            margin-top: 20px;
+            font-size: 24px; /* Increased font size */
+            color: #333; /* Dark text for visibility */
+        }
+        .bold-text {
+            font-weight: bold;
+            font-size: 30px; /* Larger, bolder text */
+        }
+        .blue-text {
+            color: #007BFF; /* Blue text color */
+        }
+        .welcome-text {
+            font-size: 48px; /* Very large text size */
+            font-weight: bold;
+            color: #000; /* Black color for contrast */
+        }
+    </style>
+</head>
+<body>
+    <div class="welcome-text">Welcome to the <span class="blue-text">Gemini</span>era</div>
+    <video id="videoFeed" width="640" height="480" autoplay></video>
+    <div id="buttonContainer">
+        <button onclick="startCamera()">Start Camera</button>
+        <button onclick="stopCamera()">Stop Camera</button>
+    </div>
+    <div id="aiResponse">Waiting for response...</div>
+
+    <script>
+        const video = document.getElementById('videoFeed');
+        const aiResponseDiv = document.getElementById('aiResponse');
+        let eventSource;
+
+        function startCamera() {
+            fetch('/start_camera', { method: 'POST' })
+                .then(() => {
+                    navigator.mediaDevices.getUserMedia({ video: true })
+                        .then(stream => {
+                            video.srcObject = stream;
+                        })
+                        .catch(error => console.error('Error accessing camera:', error));
+
+                    eventSource = new EventSource('/response_stream');
+                    eventSource.onmessage = function(event) {
+                        aiResponseDiv.innerHTML = "<span class='bold-text'>Gemini sees...</span> " + event.data;
+                    };
+                })
+                .catch(error => console.error('Error starting camera:', error));
+        }
+
+        function stopCamera() {
+            fetch('/stop_camera', { method: 'POST' })
+                .then(() => {
+                    const stream = video.srcObject;
+                    const tracks = stream.getTracks();
+                    tracks.forEach(function(track) {
+                        track.stop();
+                    });
+                    video.srcObject = null;
+
+                    if (eventSource) {
+                        eventSource.close();
+                    }
+                })
+                .catch(error => console.error('Error stopping camera:', error));
+        }
+    </script>
+</body>
+</html>
